@@ -7,14 +7,18 @@ interface Props {
   mensagem?: string;
   botaoTexto?: string;
   onConfirmar: () => void;
+  onCancelar: () => void;
+  destrutivo?: boolean;
 }
 
-export default function ModalSucesso({
+export default function ModalConfirmar({
   visivel,
   titulo,
   mensagem,
   botaoTexto = 'confirmar',
   onConfirmar,
+  onCancelar,
+  destrutivo = false,
 }: Props) {
   return (
     <Modal visible={visivel} transparent animationType="fade">
@@ -36,19 +40,35 @@ export default function ModalSucesso({
           {mensagem ? <Text style={styles.mensagem}>{mensagem}</Text> : null}
 
           <LinearGradient
-            colors={[
-              'rgba(252,200,220,0.9)',
-              'rgba(210,200,255,0.85)',
-              'rgba(252,220,200,0.9)',
-            ]}
+            colors={
+              destrutivo
+                ? [
+                    'rgba(232,96,122,0.3)',
+                    'rgba(232,96,122,0.2)',
+                    'rgba(232,96,122,0.3)',
+                  ]
+                : [
+                    'rgba(252,200,220,0.9)',
+                    'rgba(210,200,255,0.85)',
+                    'rgba(252,220,200,0.9)',
+                  ]
+            }
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.botaoGradiente}
           >
             <TouchableOpacity onPress={onConfirmar} style={styles.botao}>
-              <Text style={styles.botaoTexto}>{botaoTexto}</Text>
+              <Text
+                style={[styles.botaoTexto, destrutivo && { color: '#e8607a' }]}
+              >
+                {botaoTexto}
+              </Text>
             </TouchableOpacity>
           </LinearGradient>
+
+          <TouchableOpacity onPress={onCancelar} style={styles.botaoCancelar}>
+            <Text style={styles.botaoCancelarTexto}>cancelar</Text>
+          </TouchableOpacity>
         </LinearGradient>
       </View>
     </Modal>
@@ -105,5 +125,14 @@ const styles = StyleSheet.create({
     fontFamily: 'Baloo2_800ExtraBold',
     fontSize: 15,
     color: '#3d1a10',
+  },
+  botaoCancelar: {
+    paddingVertical: 10,
+    marginTop: 4,
+  },
+  botaoCancelarTexto: {
+    fontFamily: 'Baloo2_600SemiBold',
+    fontSize: 13,
+    color: 'rgba(122,48,64,0.4)',
   },
 });
