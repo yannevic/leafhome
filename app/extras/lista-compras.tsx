@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView,
   ActivityIndicator,
   Platform,
+  Vibration,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -39,11 +40,13 @@ import {
   RotateCcw,
   CircleCheck,
   DollarSign,
+  Pin,
 } from 'lucide-react-native';
 import ModalConfirmar from '../../components/ModalConfirmar';
 
 // ─── tipos ────────────────────────────────────────────────────────────────────
 interface Lista {
+  fixada?: boolean;
   id: string;
   spaceId: string;
   nome: string;
@@ -103,6 +106,8 @@ export default function ListaCompras() {
   const [valorFinalizar, setValorFinalizar] = useState('');
 
   const [abaAtiva, setAbaAtiva] = useState<'ativas' | 'templates'>('ativas');
+  const [modalFixar, setModalFixar] = useState(false);
+  const [listaParaFixar, setListaParaFixar] = useState<Lista | null>(null);
 
   // espaço ativo
   useEffect(() => {
@@ -214,6 +219,20 @@ export default function ListaCompras() {
     if (listaAberta?.id === listaParaDeletar) setListaAberta(null);
     setModalDeletarLista(false);
     setListaParaDeletar(null);
+  }
+
+  async function toggleFixarLista(lista: Lista) {
+    setListaParaFixar(lista);
+    setModalFixar(true);
+  }
+
+  async function confirmarFixar() {
+    if (!listaParaFixar) return;
+    await updateDoc(doc(db, 'shopping_lists', listaParaFixar.id), {
+      fixada: !listaParaFixar.fixada,
+    });
+    setModalFixar(false);
+    setListaParaFixar(null);
   }
 
   async function finalizarLista(manter: boolean) {
@@ -873,6 +892,10 @@ export default function ListaCompras() {
                       <TouchableOpacity
                         key={lista.id}
                         onPress={() => setListaAberta(lista)}
+                        onLongPress={() => {
+                          Vibration.vibrate(40);
+                          toggleFixarLista(lista);
+                        }}
                         activeOpacity={0.8}
                       >
                         <LinearGradient
@@ -898,6 +921,18 @@ export default function ListaCompras() {
                               strokeWidth={2}
                             />
                           </View>
+                          {lista.fixada && (
+                            <Pin
+                              size={12}
+                              color="#c8607a"
+                              strokeWidth={2}
+                              style={{
+                                position: 'absolute',
+                                top: 10,
+                                right: 10,
+                              }}
+                            />
+                          )}
                           <View style={styles.listaInfo}>
                             <Text style={styles.listaNome}>{lista.nome}</Text>
                             <Text style={styles.listaSub}>
@@ -1096,6 +1131,21 @@ export default function ListaCompras() {
           onCancelar={() => {
             setModalDeletarLista(false);
             setListaParaDeletar(null);
+          }}
+        />
+        <ModalConfirmar
+          visivel={modalFixar}
+          titulo={listaParaFixar?.fixada ? 'desafixar lista?' : 'fixar lista?'}
+          mensagem={
+            listaParaFixar?.fixada
+              ? 'ela vai sair do dashboard'
+              : 'ela vai aparecer no dashboard'
+          }
+          botaoTexto={listaParaFixar?.fixada ? 'desafixar' : 'fixar'}
+          onConfirmar={confirmarFixar}
+          onCancelar={() => {
+            setModalFixar(false);
+            setListaParaFixar(null);
           }}
         />
       </LinearGradient>

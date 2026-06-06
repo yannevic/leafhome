@@ -29,6 +29,7 @@ import {
   ChevronRight,
   AlertTriangle,
   Pin,
+  ShoppingCart,
 } from 'lucide-react-native';
 
 // ─── tipos ────────────────────────────────────────────────────────────────────
@@ -76,6 +77,15 @@ interface Nota {
   texto: string;
   cor: string;
   fixada: boolean;
+}
+
+interface Lista {
+  id: string;
+  nome: string;
+  fixada?: boolean;
+  status: string;
+  isTemplate: boolean;
+  criadoEm: any;
 }
 
 const CORES_NOTAS = [
@@ -195,6 +205,8 @@ export default function Inicio() {
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [eventos, setEventos] = useState<Evento[]>([]);
   const [notas, setNotas] = useState<Nota[]>([]);
+  const [listas, setListas] = useState<Lista[]>([]);
+  const [itensLista, setItensLista] = useState<any[]>([]);
   const [carregando, setCarregando] = useState(true);
 
   // usuário
@@ -282,6 +294,16 @@ export default function Inicio() {
         setNotas(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Nota))
     );
 
+    const unsubListas = onSnapshot(
+      query(collection(db, 'shopping_lists'), where('spaceId', '==', spaceId)),
+      (snap) =>
+        setListas(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Lista))
+    );
+    const unsubItens = onSnapshot(
+      query(collection(db, 'list_items'), where('spaceId', '==', spaceId)),
+      (snap) => setItensLista(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+    );
+
     return () => {
       unsubSpace();
       unsubMembers();
@@ -289,6 +311,8 @@ export default function Inicio() {
       unsubCats();
       unsubEventos();
       unsubNotas();
+      unsubListas();
+      unsubItens();
     };
   }, [spaceId]);
 
@@ -453,59 +477,6 @@ export default function Inicio() {
               </>
             )}
           </LinearGradient>
-
-          {/* ─── últimas transações ─── */}
-          {ultimasTx.length > 0 && (
-            <>
-              <View style={styles.secaoHeader}>
-                <Text style={styles.secaoTitulo}>últimas transações</Text>
-                <TouchableOpacity
-                  style={styles.linkVer}
-                  onPress={() => router.push('/(tabs)/financas')}
-                >
-                  <Text style={styles.linkVerTexto}>finanças</Text>
-                  <ChevronRight size={12} color="#c8607a" strokeWidth={2.5} />
-                </TouchableOpacity>
-              </View>
-              {ultimasTx.map((tx) => {
-                const cat = getCat(tx.categoriaId);
-                return (
-                  <LinearGradient
-                    key={tx.id}
-                    colors={[
-                      'rgba(253,246,240,1)',
-                      'rgba(252,220,228,0.9)',
-                      'rgba(230,235,255,0.8)',
-                      'rgba(253,246,240,1)',
-                    ]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles.itemCard}
-                  >
-                    <View
-                      style={[
-                        styles.dotCor,
-                        { backgroundColor: cat?.cor ?? '#b8919a' },
-                      ]}
-                    />
-                    <View style={styles.itemInfo}>
-                      <Text style={styles.itemTitulo}>{tx.descricao}</Text>
-                      <View style={styles.itemMeta}>
-                        <Text style={styles.itemSub}>
-                          {cat?.nome ?? 'outros'}
-                        </Text>
-                        <Text style={styles.itemSub}>·</Text>
-                        <Text style={styles.itemSub}>
-                          {strParaExibicao(tx.data)}
-                        </Text>
-                      </View>
-                    </View>
-                    <Text style={styles.txValor}>{fmtMoeda(tx.valor)}</Text>
-                  </LinearGradient>
-                );
-              })}
-            </>
-          )}
 
           {/* ─── aniversários do mês ─── */}
           {anivDoMes.length > 0 && (
@@ -679,6 +650,145 @@ export default function Inicio() {
               </>
             );
           })()}
+
+          {(() => {
+            const fixadas = listas.filter((l) => l.fixada && !l.isTemplate);
+            if (fixadas.length === 0) return null;
+            return (
+              <>
+                <View style={styles.secaoHeader}>
+                  <Text style={styles.secaoTitulo}>listas fixadas</Text>
+                  <TouchableOpacity
+                    style={styles.linkVer}
+                    onPress={() => router.push('/extras/lista-compras')}
+                  >
+                    <Text style={styles.linkVerTexto}>ver todas</Text>
+                    <ChevronRight size={12} color="#c8607a" strokeWidth={2.5} />
+                  </TouchableOpacity>
+                </View>
+                {fixadas.map((lista) => {
+                  const its = itensLista.filter(
+                    (i: any) => i.listaId === lista.id
+                  );
+                  const marcados = its.filter((i: any) => i.marcado).length;
+                  const pct = its.length > 0 ? marcados / its.length : 0;
+                  return (
+                    <TouchableOpacity
+                      key={lista.id}
+                      onPress={() => router.push('/extras/lista-compras')}
+                      activeOpacity={0.8}
+                    >
+                      <LinearGradient
+                        colors={[
+                          'rgba(253,246,240,1)',
+                          'rgba(252,220,228,0.9)',
+                          'rgba(230,235,255,0.8)',
+                          'rgba(253,246,240,1)',
+                        ]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={styles.itemCard}
+                      >
+                        <View
+                          style={[
+                            styles.cardIconeWrap,
+                            { backgroundColor: 'rgba(106,159,216,0.15)' },
+                          ]}
+                        >
+                          <ShoppingCart
+                            size={14}
+                            color="#6a9fd8"
+                            strokeWidth={2}
+                          />
+                        </View>
+                        <View style={styles.itemInfo}>
+                          <Text style={styles.itemTitulo}>{lista.nome}</Text>
+                          <Text style={styles.itemSub}>
+                            {marcados}/{its.length} itens
+                          </Text>
+                          <View
+                            style={{
+                              height: 4,
+                              borderRadius: 4,
+                              backgroundColor: 'rgba(232,160,176,0.2)',
+                              overflow: 'hidden',
+                              marginTop: 4,
+                            }}
+                          >
+                            <LinearGradient
+                              colors={[
+                                'rgba(252,200,220,0.9)',
+                                'rgba(210,200,255,0.85)',
+                              ]}
+                              start={{ x: 0, y: 0 }}
+                              end={{ x: 1, y: 0 }}
+                              style={{
+                                height: 4,
+                                borderRadius: 4,
+                                width: `${pct * 100}%`,
+                              }}
+                            />
+                          </View>
+                        </View>
+                      </LinearGradient>
+                    </TouchableOpacity>
+                  );
+                })}
+              </>
+            );
+          })()}
+          {/* ─── últimas transações ─── */}
+          {ultimasTx.length > 0 && (
+            <>
+              <View style={styles.secaoHeader}>
+                <Text style={styles.secaoTitulo}>últimas transações</Text>
+                <TouchableOpacity
+                  style={styles.linkVer}
+                  onPress={() => router.push('/(tabs)/financas')}
+                >
+                  <Text style={styles.linkVerTexto}>finanças</Text>
+                  <ChevronRight size={12} color="#c8607a" strokeWidth={2.5} />
+                </TouchableOpacity>
+              </View>
+              {ultimasTx.map((tx) => {
+                const cat = getCat(tx.categoriaId);
+                return (
+                  <LinearGradient
+                    key={tx.id}
+                    colors={[
+                      'rgba(253,246,240,1)',
+                      'rgba(252,220,228,0.9)',
+                      'rgba(230,235,255,0.8)',
+                      'rgba(253,246,240,1)',
+                    ]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.itemCard}
+                  >
+                    <View
+                      style={[
+                        styles.dotCor,
+                        { backgroundColor: cat?.cor ?? '#b8919a' },
+                      ]}
+                    />
+                    <View style={styles.itemInfo}>
+                      <Text style={styles.itemTitulo}>{tx.descricao}</Text>
+                      <View style={styles.itemMeta}>
+                        <Text style={styles.itemSub}>
+                          {cat?.nome ?? 'outros'}
+                        </Text>
+                        <Text style={styles.itemSub}>·</Text>
+                        <Text style={styles.itemSub}>
+                          {strParaExibicao(tx.data)}
+                        </Text>
+                      </View>
+                    </View>
+                    <Text style={styles.txValor}>{fmtMoeda(tx.valor)}</Text>
+                  </LinearGradient>
+                );
+              })}
+            </>
+          )}
         </ScrollView>
       </LinearGradient>
     </View>
