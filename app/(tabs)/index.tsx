@@ -28,6 +28,7 @@ import {
   Clock,
   ChevronRight,
   AlertTriangle,
+  Pin,
 } from 'lucide-react-native';
 
 // ─── tipos ────────────────────────────────────────────────────────────────────
@@ -68,6 +69,47 @@ interface Evento {
   data: string;
   cor?: string;
 }
+
+interface Nota {
+  id: string;
+  titulo: string;
+  texto: string;
+  cor: string;
+  fixada: boolean;
+}
+
+const CORES_NOTAS = [
+  {
+    id: 'rosa',
+    fundo: 'rgba(252,220,228,0.95)',
+    borda: 'rgba(232,160,176,0.6)',
+  },
+  {
+    id: 'lilas',
+    fundo: 'rgba(232,220,255,0.95)',
+    borda: 'rgba(190,160,240,0.6)',
+  },
+  {
+    id: 'menta',
+    fundo: 'rgba(200,240,220,0.95)',
+    borda: 'rgba(130,200,160,0.6)',
+  },
+  {
+    id: 'amarelo',
+    fundo: 'rgba(255,245,200,0.95)',
+    borda: 'rgba(220,190,100,0.6)',
+  },
+  {
+    id: 'azul',
+    fundo: 'rgba(210,230,255,0.95)',
+    borda: 'rgba(140,180,240,0.6)',
+  },
+  {
+    id: 'pessego',
+    fundo: 'rgba(255,225,200,0.95)',
+    borda: 'rgba(230,170,120,0.6)',
+  },
+];
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 const MESES = [
@@ -152,6 +194,7 @@ export default function Inicio() {
   const [transacoes, setTransacoes] = useState<Transacao[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [eventos, setEventos] = useState<Evento[]>([]);
+  const [notas, setNotas] = useState<Nota[]>([]);
   const [carregando, setCarregando] = useState(true);
 
   // usuário
@@ -232,12 +275,20 @@ export default function Inicio() {
         setEventos(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Evento))
     );
 
+    // notas
+    const unsubNotas = onSnapshot(
+      query(collection(db, 'notes'), where('spaceId', '==', spaceId)),
+      (snap) =>
+        setNotas(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Nota))
+    );
+
     return () => {
       unsubSpace();
       unsubMembers();
       unsubTx();
       unsubCats();
       unsubEventos();
+      unsubNotas();
     };
   }, [spaceId]);
 
@@ -313,7 +364,7 @@ export default function Inicio() {
         <ScrollView
           contentContainerStyle={[
             styles.scroll,
-            { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 120 },
+            { paddingTop: insets.top + 20, paddingBottom: insets.bottom - 20 },
           ]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
@@ -574,6 +625,60 @@ export default function Inicio() {
               ))}
             </>
           )}
+          {/* ─── notas fixadas ─── */}
+          {(() => {
+            const fixadas = notas.filter((n) => n.fixada);
+            if (fixadas.length === 0) return null;
+            return (
+              <>
+                <View style={styles.secaoHeader}>
+                  <Text style={styles.secaoTitulo}>notas fixadas</Text>
+                  <TouchableOpacity
+                    style={styles.linkVer}
+                    onPress={() => router.push('/extras/notas')}
+                  >
+                    <Text style={styles.linkVerTexto}>ver todas</Text>
+                    <ChevronRight size={12} color="#c8607a" strokeWidth={2.5} />
+                  </TouchableOpacity>
+                </View>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={{ marginBottom: 8 }}
+                >
+                  {fixadas.map((n) => {
+                    const cor =
+                      CORES_NOTAS.find((c) => c.id === n.cor) ?? CORES_NOTAS[0];
+                    return (
+                      <TouchableOpacity
+                        key={n.id}
+                        onPress={() => router.push('/extras/notas')}
+                        activeOpacity={0.8}
+                        style={{ marginRight: 10 }}
+                      >
+                        <View
+                          style={[
+                            styles.notaCard,
+                            {
+                              backgroundColor: cor.fundo,
+                              borderColor: cor.borda,
+                            },
+                          ]}
+                        >
+                          {n.titulo ? (
+                            <Text style={styles.notaTitulo}>{n.titulo}</Text>
+                          ) : null}
+                          <Text style={styles.notaTexto} numberOfLines={4}>
+                            {n.texto}
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </>
+            );
+          })()}
         </ScrollView>
       </LinearGradient>
     </View>
@@ -742,5 +847,25 @@ const styles = StyleSheet.create({
     fontFamily: 'Baloo2_800ExtraBold',
     fontSize: 11,
     color: '#c8607a',
+  },
+  notaCard: {
+    width: 160,
+    minHeight: 100,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    padding: 12,
+  },
+  notaTitulo: {
+    fontFamily: 'Baloo2_800ExtraBold',
+    fontSize: 12,
+    color: '#3d1a10',
+    marginBottom: 4,
+  },
+  notaTexto: {
+    fontFamily: 'Baloo2_400Regular',
+    fontSize: 11,
+    color: 'rgba(61,26,16,0.75)',
+    lineHeight: 17,
   },
 });

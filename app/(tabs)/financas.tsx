@@ -570,7 +570,7 @@ export default function Financas() {
         <ScrollView
           contentContainerStyle={[
             styles.scroll,
-            { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 120 },
+            { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 32 },
           ]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}

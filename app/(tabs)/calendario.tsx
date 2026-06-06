@@ -304,10 +304,15 @@ export default function Calendario() {
         <ScrollView
           contentContainerStyle={[
             styles.fundo,
-            { paddingBottom: 32 + insets.bottom },
+            { paddingTop: insets.top + 16, paddingBottom: 32 + insets.bottom },
           ]}
           keyboardShouldPersistTaps="handled"
         >
+          {/* título */}
+          <View style={styles.header}>
+            <Text style={styles.tituloPagina}>calendário</Text>
+          </View>
+
           {/* header mês */}
           <View style={styles.headerMes}>
             <TouchableOpacity onPress={voltarMes} style={styles.navBtn}>
@@ -784,8 +789,7 @@ export default function Calendario() {
 
 const styles = StyleSheet.create({
   fundo: {
-    padding: 24,
-    paddingTop: 48,
+    paddingHorizontal: 20,
   },
   headerMes: {
     flexDirection: 'row',
@@ -797,6 +801,14 @@ const styles = StyleSheet.create({
     padding: 8,
     backgroundColor: 'rgba(232,160,176,0.2)',
     borderRadius: 10,
+  },
+  header: {
+    marginBottom: 20,
+  },
+  tituloPagina: {
+    fontFamily: 'Baloo2_800ExtraBold',
+    fontSize: 28,
+    color: '#3d1a10',
   },
   tituloMes: {
     fontFamily: 'Baloo2_800ExtraBold',
