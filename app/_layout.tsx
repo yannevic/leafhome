@@ -1,7 +1,12 @@
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
-import { useFonts, Baloo2_400Regular, Baloo2_600SemiBold, Baloo2_800ExtraBold } from '@expo-google-fonts/baloo-2';
+import {
+  useFonts,
+  Baloo2_400Regular,
+  Baloo2_600SemiBold,
+  Baloo2_800ExtraBold,
+} from '@expo-google-fonts/baloo-2';
 import * as SplashScreen from 'expo-splash-screen';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';

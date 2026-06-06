@@ -99,6 +99,8 @@ export default function Perfil() {
 
   useEffect(() => {
     carregarDados();
+    const intervalo = setInterval(carregarDados, 30000);
+    return () => clearInterval(intervalo);
   }, []);
 
   async function carregarDados() {

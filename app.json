@@ -11,21 +11,37 @@
       "bundleIdentifier": "com.leafhome2.app"
     },
     "android": {
-  "adaptiveIcon": {
-    "foregroundImage": "./assets/android-icon-foreground.png",
-    "backgroundColor": "#fff8f9"
-  },
-  "package": "com.leafhome2.app",
-  "navigationBarColor": "#fff8f9"
-},
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundColor": "#fff8f9"
+      },
+      "package": "com.leafhome2.app",
+      "navigationBarColor": "#fff8f9",
+      "permissions": [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ]
+    },
     "plugins": [
       "expo-router",
       "expo-splash-screen",
       "expo-asset",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Permitir que o Leafhome acesse sua localização para mostrar o clima."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "578aaa39-7256-47c1-b09d-67a51caf3abe"
+      }
     }
   }
 }

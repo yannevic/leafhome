@@ -11,6 +11,8 @@ import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState, useEffect } from 'react';
+import * as Location from 'expo-location';
+import { Sun, Cloud, CloudRain, CloudSnow } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import {
   collection,
@@ -86,6 +88,13 @@ interface Lista {
   status: string;
   isTemplate: boolean;
   criadoEm: any;
+}
+
+interface Clima {
+  temp: number;
+  weathercode: number;
+  cidade: string;
+  estado: string;
 }
 
 const CORES_NOTAS = [
@@ -208,6 +217,8 @@ export default function Inicio() {
   const [listas, setListas] = useState<Lista[]>([]);
   const [itensLista, setItensLista] = useState<any[]>([]);
   const [carregando, setCarregando] = useState(true);
+  const [clima, setClima] = useState<Clima | null>(null);
+  const [climaErro, setClimaErro] = useState(false);
 
   // usuário
   useEffect(() => {
@@ -225,6 +236,46 @@ export default function Inicio() {
     });
     return unsub;
   }, [user]);
+
+  useEffect(() => {
+    async function buscarClima() {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') {
+          setClimaErro(true);
+          return;
+        }
+        const loc = await Location.getCurrentPositionAsync({});
+        const { latitude, longitude } = loc.coords;
+        const [resClima, resGeo] = await Promise.all([
+          fetch(
+            `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true`
+          ),
+          fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`,
+            { headers: { 'User-Agent': 'leafhome2/1.0' } }
+          ),
+        ]);
+        const jsonClima = await resClima.json();
+        const jsonGeo = await resGeo.json();
+        const cidade =
+          jsonGeo.address?.city ??
+          jsonGeo.address?.town ??
+          jsonGeo.address?.village ??
+          '';
+        const estado = jsonGeo.address?.state ?? '';
+        setClima({
+          temp: Math.round(jsonClima.current_weather.temperature),
+          weathercode: jsonClima.current_weather.weathercode,
+          cidade,
+          estado,
+        });
+      } catch {
+        setClimaErro(true);
+      }
+    }
+    buscarClima();
+  }, []);
 
   // espaço + membros
   useEffect(() => {
@@ -370,6 +421,26 @@ export default function Inicio() {
     return `em ${diff} dias`;
   }
 
+  function climaIcone(code: number) {
+    if (code === 0) return <Sun size={20} color="#d4a84b" strokeWidth={2} />;
+    if (code <= 3)
+      return <Cloud size={20} color="rgba(122,48,64,0.5)" strokeWidth={2} />;
+    if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82))
+      return <CloudRain size={20} color="#6a9fd8" strokeWidth={2} />;
+    if ((code >= 71 && code <= 77) || (code >= 85 && code <= 86))
+      return <CloudSnow size={20} color="#6a9fd8" strokeWidth={2} />;
+    return <Cloud size={20} color="rgba(122,48,64,0.5)" strokeWidth={2} />;
+  }
+
+  function climaDescricao(code: number) {
+    if (code === 0) return 'céu limpo';
+    if (code <= 3) return 'nublado';
+    if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82))
+      return 'chuva';
+    if ((code >= 71 && code <= 77) || (code >= 85 && code <= 86)) return 'neve';
+    return 'nublado';
+  }
+
   return (
     <View style={{ flex: 1 }}>
       <StatusBar style="dark" />
@@ -425,6 +496,46 @@ export default function Inicio() {
               </LinearGradient>
             </TouchableOpacity>
           </View>
+
+          {/* ─── card clima ─── */}
+          {clima && (
+            <LinearGradient
+              colors={[
+                'rgba(253,246,240,1)',
+                'rgba(230,235,255,0.8)',
+                'rgba(210,225,255,0.7)',
+                'rgba(253,246,240,1)',
+              ]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[styles.card, { marginBottom: 12, paddingVertical: 14 }]}
+            >
+              <View
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}
+              >
+                <View
+                  style={[
+                    styles.cardIconeWrap,
+                    {
+                      backgroundColor: 'rgba(106,159,216,0.15)',
+                      width: 36,
+                      height: 36,
+                    },
+                  ]}
+                >
+                  {climaIcone(clima.weathercode)}
+                </View>
+                <View>
+                  <Text style={styles.resumoValor2}>{clima.temp}°C</Text>
+                  <Text style={styles.resumoSub}>
+                    {climaDescricao(clima.weathercode)}
+                    {clima.cidade ? ` · ${clima.cidade}` : ''}
+                    {clima.estado ? `, ${clima.estado}` : ''}
+                  </Text>
+                </View>
+              </View>
+            </LinearGradient>
+          )}
 
           {/* ─── card gastos do mês ─── */}
           <LinearGradient
@@ -977,5 +1088,11 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: 'rgba(61,26,16,0.75)',
     lineHeight: 17,
+  },
+  resumoValor2: {
+    fontFamily: 'Baloo2_800ExtraBold',
+    fontSize: 22,
+    color: '#3d1a10',
+    lineHeight: 26,
   },
 });
