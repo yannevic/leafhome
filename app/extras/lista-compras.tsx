@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Platform,
   Vibration,
+  Image,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -27,6 +28,7 @@ import {
   doc,
   Timestamp,
   writeBatch,
+  getDoc,
 } from 'firebase/firestore';
 import { db, auth } from '../../lib/firebase';
 import {
@@ -66,6 +68,23 @@ interface Item {
   ordem: number;
 }
 
+const AVATAR_MAP: Record<string, any> = {
+  tito: require('../../assets/avatars/tito.png'),
+  larah: require('../../assets/avatars/larah.png'),
+  mingau: require('../../assets/avatars/mingau.png'),
+  pipoca: require('../../assets/avatars/pipoca.png'),
+  gigi: require('../../assets/avatars/gigi.png'),
+  lumis: require('../../assets/avatars/lumis.png'),
+  spark: require('../../assets/avatars/spark.png'),
+  fuba: require('../../assets/avatars/fuba.png'),
+  mimo: require('../../assets/avatars/mimo.png'),
+  mike: require('../../assets/avatars/mike.png'),
+  default: require('../../assets/avatars/default.png'),
+};
+function avatarSrc(nome: string) {
+  return AVATAR_MAP[nome] ?? AVATAR_MAP['default'];
+}
+
 // ─── componente ───────────────────────────────────────────────────────────────
 export default function ListaCompras() {
   const insets = useSafeAreaInsets();
@@ -77,6 +96,9 @@ export default function ListaCompras() {
   const [itens, setItens] = useState<Item[]>([]);
   const [listaAberta, setListaAberta] = useState<Lista | null>(null);
   const [carregando, setCarregando] = useState(true);
+  const [membros, setMembros] = useState<
+    Record<string, { apelido: string; avatarNome: string }>
+  >({});
 
   // modais
   const [modalNovaLista, setModalNovaLista] = useState(false);
@@ -121,6 +143,24 @@ export default function ListaCompras() {
   // listas
   useEffect(() => {
     if (!spaceId) return;
+    const unsubMembros = onSnapshot(
+      query(collection(db, 'space_members'), where('spaceId', '==', spaceId)),
+      async (snap) => {
+        const map: Record<string, { apelido: string; avatarNome: string }> = {};
+        for (const m of snap.docs) {
+          const mUid = m.data().userId;
+          const mSnap = await getDoc(doc(db, 'users', mUid));
+          if (mSnap.exists()) {
+            const d = mSnap.data();
+            map[mUid] = {
+              apelido: d.apelido ?? '',
+              avatarNome: d.avatarNome ?? '',
+            };
+          }
+        }
+        setMembros(map);
+      }
+    );
     const unsub = onSnapshot(
       query(collection(db, 'shopping_lists'), where('spaceId', '==', spaceId)),
       (snap) => {
@@ -128,7 +168,10 @@ export default function ListaCompras() {
         setCarregando(false);
       }
     );
-    return unsub;
+    return () => {
+      unsub();
+      unsubMembros();
+    };
   }, [spaceId]);
 
   // itens
@@ -953,6 +996,20 @@ export default function ListaCompras() {
                               />
                             </View>
                           </View>
+                          {membros[(lista as any).criadoPor] && (
+                            <Image
+                              source={avatarSrc(
+                                membros[(lista as any).criadoPor].avatarNome
+                              )}
+                              style={{
+                                width: 20,
+                                height: 20,
+                                borderRadius: 10,
+                                marginRight: 4,
+                              }}
+                              resizeMode="cover"
+                            />
+                          )}
                           <TouchableOpacity
                             onPress={() => {
                               setListaParaDeletar(lista.id);

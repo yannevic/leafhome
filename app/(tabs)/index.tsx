@@ -56,6 +56,7 @@ interface Transacao {
   data: string;
   descricao: string;
   categoriaId: string;
+  userId?: string;
 }
 
 interface Categoria {
@@ -986,6 +987,33 @@ export default function Inicio() {
                         <Text style={styles.itemSub}>
                           {strParaExibicao(tx.data)}
                         </Text>
+                        {(() => {
+                          const m = membros.find(
+                            (mb) => mb.userId === tx.userId
+                          );
+                          if (!m) return null;
+                          return (
+                            <View
+                              style={{
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                gap: 3,
+                                marginTop: 2,
+                              }}
+                            >
+                              <Image
+                                source={avatarSource(m.avatarNome)}
+                                style={{
+                                  width: 14,
+                                  height: 14,
+                                  borderRadius: 7,
+                                }}
+                                resizeMode="cover"
+                              />
+                              <Text style={styles.itemSub}>{m.apelido}</Text>
+                            </View>
+                          );
+                        })()}
                       </View>
                     </View>
                     <Text style={styles.txValor}>{fmtMoeda(tx.valor)}</Text>

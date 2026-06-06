@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   ActivityIndicator,
   Platform,
+  Image,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -26,6 +27,7 @@ import {
   deleteDoc,
   doc,
   Timestamp,
+  getDoc,
 } from 'firebase/firestore';
 import { db, auth } from '../../lib/firebase';
 import { ChevronLeft, Plus, Pin, Trash2, Pencil } from 'lucide-react-native';
@@ -83,6 +85,23 @@ const CORES = [
   },
 ];
 
+const AVATAR_MAP: Record<string, any> = {
+  tito: require('../../assets/avatars/tito.png'),
+  larah: require('../../assets/avatars/larah.png'),
+  mingau: require('../../assets/avatars/mingau.png'),
+  pipoca: require('../../assets/avatars/pipoca.png'),
+  gigi: require('../../assets/avatars/gigi.png'),
+  lumis: require('../../assets/avatars/lumis.png'),
+  spark: require('../../assets/avatars/spark.png'),
+  fuba: require('../../assets/avatars/fuba.png'),
+  mimo: require('../../assets/avatars/mimo.png'),
+  mike: require('../../assets/avatars/mike.png'),
+  default: require('../../assets/avatars/default.png'),
+};
+function avatarSrc(nome: string) {
+  return AVATAR_MAP[nome] ?? AVATAR_MAP['default'];
+}
+
 function corPorId(id: string) {
   return CORES.find((c) => c.id === id) ?? CORES[0];
 }
@@ -96,6 +115,9 @@ export default function Notas() {
   const [spaceId, setSpaceId] = useState<string | null>(null);
   const [notas, setNotas] = useState<Nota[]>([]);
   const [carregando, setCarregando] = useState(true);
+  const [membros, setMembros] = useState<
+    Record<string, { apelido: string; avatarNome: string }>
+  >({});
 
   // modal criar/editar
   const [modalForm, setModalForm] = useState(false);
@@ -128,7 +150,30 @@ export default function Notas() {
         setCarregando(false);
       }
     );
-    return unsub;
+
+    // membros do espaço
+    const unsubMembros = onSnapshot(
+      query(collection(db, 'space_members'), where('spaceId', '==', spaceId)),
+      async (snap) => {
+        const map: Record<string, { apelido: string; avatarNome: string }> = {};
+        for (const m of snap.docs) {
+          const mUid = m.data().userId;
+          const mSnap = await getDoc(doc(db, 'users', mUid));
+          if (mSnap.exists()) {
+            const d = mSnap.data();
+            map[mUid] = {
+              apelido: d.apelido ?? '',
+              avatarNome: d.avatarNome ?? '',
+            };
+          }
+        }
+        setMembros(map);
+      }
+    );
+    return () => {
+      unsub();
+      unsubMembros();
+    };
   }, [spaceId]);
 
   // ordena: fixadas primeiro, depois por data desc
@@ -227,6 +272,31 @@ export default function Notas() {
           <Text style={styles.notaTexto} numberOfLines={6}>
             {nota.texto}
           </Text>
+          {membros[nota.criadoPor] && (
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 4,
+                marginTop: 8,
+              }}
+            >
+              <Image
+                source={avatarSrc(membros[nota.criadoPor].avatarNome)}
+                style={{ width: 16, height: 16, borderRadius: 8 }}
+                resizeMode="cover"
+              />
+              <Text
+                style={{
+                  fontFamily: 'Baloo2_400Regular',
+                  fontSize: 10,
+                  color: 'rgba(122,48,64,0.45)',
+                }}
+              >
+                {membros[nota.criadoPor].apelido}
+              </Text>
+            </View>
+          )}
         </View>
       </TouchableOpacity>
     );

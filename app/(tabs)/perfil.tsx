@@ -111,12 +111,12 @@ export default function Perfil() {
 
   useEffect(() => {
     carregarDados();
-    const intervalo = setInterval(carregarDados, 30000);
+    const intervalo = setInterval(() => carregarDados(true), 30000);
     return () => clearInterval(intervalo);
   }, []);
 
-  async function carregarDados() {
-    setCarregando(true);
+  async function carregarDados(silencioso = false) {
+    if (!silencioso) setCarregando(true);
     const userSnap = await getDoc(doc(db, 'users', uid));
     const userData = userSnap.data() ?? {};
     setApelido(userData.apelido ?? '');
@@ -472,7 +472,7 @@ export default function Perfil() {
               <Text style={[styles.labelSecao, { marginBottom: 0 }]}>
                 membros
               </Text>
-              <TouchableOpacity onPress={carregarDados}>
+              <TouchableOpacity onPress={() => carregarDados()}>
                 <RefreshCw
                   size={13}
                   color="rgba(122,48,64,0.55)"

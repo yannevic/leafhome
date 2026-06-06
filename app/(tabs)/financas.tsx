@@ -10,6 +10,7 @@ import {
   Platform,
   ActivityIndicator,
   FlatList,
+  Image,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -25,6 +26,7 @@ import {
   deleteDoc,
   doc,
   Timestamp,
+  getDoc,
 } from 'firebase/firestore';
 import { db, auth } from '../../lib/firebase';
 import {
@@ -179,6 +181,23 @@ const ICONES_DISPONIVEIS = [
   'Zap',
 ];
 
+const AVATAR_MAP: Record<string, any> = {
+  tito: require('../../assets/avatars/tito.png'),
+  larah: require('../../assets/avatars/larah.png'),
+  mingau: require('../../assets/avatars/mingau.png'),
+  pipoca: require('../../assets/avatars/pipoca.png'),
+  gigi: require('../../assets/avatars/gigi.png'),
+  lumis: require('../../assets/avatars/lumis.png'),
+  spark: require('../../assets/avatars/spark.png'),
+  fuba: require('../../assets/avatars/fuba.png'),
+  mimo: require('../../assets/avatars/mimo.png'),
+  mike: require('../../assets/avatars/mike.png'),
+  default: require('../../assets/avatars/default.png'),
+};
+function avatarSrc(nome: string) {
+  return AVATAR_MAP[nome] ?? AVATAR_MAP['default'];
+}
+
 function IconeCategoria({
   nome,
   cor,
@@ -327,6 +346,9 @@ export default function Financas() {
   const [transacoes, setTransacoes] = useState<Transacao[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [filtroCategoria, setFiltroCategoria] = useState<string | null>(null);
+  const [membros, setMembros] = useState<
+    Record<string, { apelido: string; avatarNome: string }>
+  >({});
 
   // modal tx
   const [modalTx, setModalTx] = useState(false);
@@ -385,6 +407,24 @@ export default function Financas() {
   useEffect(() => {
     if (!spaceId) return;
     garantirCategorias(spaceId);
+    const unsubMembros = onSnapshot(
+      query(collection(db, 'space_members'), where('spaceId', '==', spaceId)),
+      async (snap) => {
+        const map: Record<string, { apelido: string; avatarNome: string }> = {};
+        for (const m of snap.docs) {
+          const mUid = m.data().userId;
+          const mSnap = await getDoc(doc(db, 'users', mUid));
+          if (mSnap.exists()) {
+            const d = mSnap.data();
+            map[mUid] = {
+              apelido: d.apelido ?? '',
+              avatarNome: d.avatarNome ?? '',
+            };
+          }
+        }
+        setMembros(map);
+      }
+    );
     const unsubCats = onSnapshot(
       query(collection(db, 'categories'), where('spaceId', '==', spaceId)),
       (snap) =>
@@ -404,6 +444,7 @@ export default function Financas() {
     return () => {
       unsubCats();
       unsubTx();
+      unsubMembros();
     };
   }, [spaceId, garantirCategorias]);
 
@@ -765,6 +806,31 @@ export default function Financas() {
                         <Text style={styles.txCategoria}>
                           {cat?.nome ?? 'outros'}
                         </Text>
+                        {membros[tx.userId] && (
+                          <View
+                            style={{
+                              flexDirection: 'row',
+                              alignItems: 'center',
+                              gap: 3,
+                              marginTop: 2,
+                            }}
+                          >
+                            <Image
+                              source={avatarSrc(membros[tx.userId].avatarNome)}
+                              style={{ width: 14, height: 14, borderRadius: 7 }}
+                              resizeMode="cover"
+                            />
+                            <Text
+                              style={{
+                                fontFamily: 'Baloo2_400Regular',
+                                fontSize: 10,
+                                color: 'rgba(122,48,64,0.4)',
+                              }}
+                            >
+                              {membros[tx.userId].apelido}
+                            </Text>
+                          </View>
+                        )}
                       </View>
                       <View style={styles.txDireita}>
                         <Text style={styles.txValor}>{fmtMoeda(tx.valor)}</Text>
