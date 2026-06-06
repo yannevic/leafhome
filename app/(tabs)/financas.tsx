@@ -64,6 +64,7 @@ import {
   BookOpen,
   Briefcase,
   Building,
+  CalendarDays,
   Camera,
   Candy,
   Droplets,
@@ -337,6 +338,10 @@ export default function Financas() {
     strParaExibicao(dataParaStr(hoje))
   );
   const [salvandoTx, setSalvandoTx] = useState(false);
+  const [txAdicionarCalendario, setTxAdicionarCalendario] = useState(false);
+  const [txRecorrente, setTxRecorrente] = useState(false);
+  const [txDuracaoMeses, setTxDuracaoMeses] = useState<number | null>(12);
+  const [txCor, setTxCor] = useState('#c8607a');
 
   // modal categorias
   const [modalCats, setModalCats] = useState(false);
@@ -456,7 +461,7 @@ export default function Financas() {
           data: dataInterno,
         });
       } else {
-        await addDoc(collection(db, 'transactions'), {
+        const docRef = await addDoc(collection(db, 'transactions'), {
           spaceId,
           userId: user.uid,
           categoriaId: txCategoriaId,
@@ -465,6 +470,22 @@ export default function Financas() {
           data: dataInterno,
           criadoEm: Timestamp.now(),
         });
+
+        if (txAdicionarCalendario) {
+          await addDoc(collection(db, 'calendar_events'), {
+            spaceId,
+            criadoPor: user.uid,
+            tipo: txRecorrente ? 'pagamento' : 'evento',
+            titulo: txDescricao.trim().toLowerCase(),
+            data: dataInterno,
+            cor: txCor,
+            recorrente: txRecorrente,
+            duracaoMeses: txRecorrente ? txDuracaoMeses : null,
+            recorrenciaMeses: txRecorrente ? 1 : null,
+            diaDoMes: txRecorrente ? new Date(dataInterno).getDate() : null,
+            origemFinancas: docRef.id,
+          });
+        }
       }
       fecharModalTx();
     } finally {
@@ -479,6 +500,10 @@ export default function Financas() {
     setTxCategoriaId(categorias[0]?.id ?? '');
     setTxDataExib(strParaExibicao(dataParaStr(hoje)));
     setModalTx(true);
+    setTxAdicionarCalendario(false);
+    setTxRecorrente(false);
+    setTxDuracaoMeses(12);
+    setTxCor('#c8607a');
   }
   function abrirEditarTx(tx: Transacao) {
     setTxEditando(tx);
@@ -896,6 +921,128 @@ export default function Financas() {
                     </TouchableOpacity>
                   ))}
                 </ScrollView>
+
+                {/* adicionar ao calendário */}
+                <TouchableOpacity
+                  style={styles.calendarToggle}
+                  onPress={() =>
+                    setTxAdicionarCalendario(!txAdicionarCalendario)
+                  }
+                >
+                  <CalendarDays
+                    size={14}
+                    color={
+                      txAdicionarCalendario ? '#c8607a' : 'rgba(122,48,64,0.4)'
+                    }
+                    strokeWidth={2}
+                  />
+                  <Text
+                    style={[
+                      styles.calendarToggleTexto,
+                      txAdicionarCalendario && { color: '#c8607a' },
+                    ]}
+                  >
+                    adicionar ao calendário
+                  </Text>
+                  <View
+                    style={[
+                      styles.toggleBox,
+                      txAdicionarCalendario && styles.toggleBoxAtivo,
+                    ]}
+                  >
+                    {txAdicionarCalendario && (
+                      <Check size={10} color="#fff" strokeWidth={3} />
+                    )}
+                  </View>
+                </TouchableOpacity>
+
+                {txAdicionarCalendario && (
+                  <View style={{ marginBottom: 16 }}>
+                    <TouchableOpacity
+                      style={styles.recorrenteToggle}
+                      onPress={() => setTxRecorrente(!txRecorrente)}
+                    >
+                      <Text
+                        style={[
+                          styles.recorrenteTexto,
+                          txRecorrente && { color: '#c8607a' },
+                        ]}
+                      >
+                        pagamento recorrente
+                      </Text>
+                      <View
+                        style={[
+                          styles.toggleBox,
+                          txRecorrente && styles.toggleBoxAtivo,
+                        ]}
+                      >
+                        {txRecorrente && (
+                          <Check size={10} color="#fff" strokeWidth={3} />
+                        )}
+                      </View>
+                    </TouchableOpacity>
+
+                    {txRecorrente && (
+                      <>
+                        <Text style={[styles.label, { marginTop: 12 }]}>
+                          duração
+                        </Text>
+                        <View style={styles.duracaoRow}>
+                          {[
+                            { label: '3 meses', meses: 3 },
+                            { label: '6 meses', meses: 6 },
+                            { label: '1 ano', meses: 12 },
+                            { label: '2 anos', meses: 24 },
+                            { label: 'sempre', meses: null },
+                          ].map((d) => (
+                            <TouchableOpacity
+                              key={d.label}
+                              style={[
+                                styles.duracaoBotao,
+                                txDuracaoMeses === d.meses &&
+                                  styles.duracaoBotaoAtivo,
+                              ]}
+                              onPress={() => setTxDuracaoMeses(d.meses)}
+                            >
+                              <Text
+                                style={[
+                                  styles.duracaoTexto,
+                                  txDuracaoMeses === d.meses &&
+                                    styles.duracaoTextoAtivo,
+                                ]}
+                              >
+                                {d.label}
+                              </Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                        <Text style={styles.label}>cor no calendário</Text>
+                        <View style={styles.coresRow}>
+                          {[
+                            '#c8607a',
+                            '#e8a87c',
+                            '#7cb9e8',
+                            '#7ce8a8',
+                            '#a87ce8',
+                            '#e8e87c',
+                            '#e87ca8',
+                            '#7ce8e8',
+                          ].map((c) => (
+                            <TouchableOpacity
+                              key={c}
+                              style={[
+                                styles.corOpcao,
+                                { backgroundColor: c },
+                                txCor === c && styles.corOpcaoAtiva,
+                              ]}
+                              onPress={() => setTxCor(c)}
+                            />
+                          ))}
+                        </View>
+                      </>
+                    )}
+                  </View>
+                )}
 
                 <TouchableOpacity
                   style={styles.botao}
@@ -1486,12 +1633,80 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 8,
   },
-  corOpcao: {
-    width: 26,
-    height: 26,
-    borderRadius: 8,
+  calendarToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    marginBottom: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(232,160,176,0.2)',
+    borderStyle: 'dashed',
+  },
+  calendarToggleTexto: {
+    flex: 1,
+    fontFamily: 'Baloo2_600SemiBold',
+    fontSize: 13,
+    color: 'rgba(122,48,64,0.5)',
+  },
+  recorrenteToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+  },
+  recorrenteTexto: {
+    fontFamily: 'Baloo2_600SemiBold',
+    fontSize: 13,
+    color: 'rgba(122,48,64,0.5)',
+  },
+  toggleBox: {
+    width: 20,
+    height: 20,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    borderColor: 'rgba(232,160,176,0.4)',
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: 'rgba(253,242,246,0.7)',
   },
-  corOpcaoAtiva: { borderWidth: 2.5, borderColor: '#3d1a10' },
+  toggleBoxAtivo: { backgroundColor: '#c8607a', borderColor: '#c8607a' },
+  duracaoRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 16,
+  },
+  duracaoBotao: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: 'rgba(232,160,176,0.15)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(232,160,176,0.2)',
+  },
+  duracaoBotaoAtivo: {
+    backgroundColor: 'rgba(200,96,122,0.15)',
+    borderColor: '#c8607a',
+  },
+  duracaoTexto: {
+    fontFamily: 'Baloo2_600SemiBold',
+    fontSize: 11,
+    color: 'rgba(122,48,64,0.55)',
+  },
+  duracaoTextoAtivo: { color: '#c8607a', fontFamily: 'Baloo2_800ExtraBold' },
+  coresRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 16,
+    flexWrap: 'wrap',
+  },
+  corOpcao: {
+    width: 28,
+    height: 28,
+    borderRadius: 999,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  corOpcaoAtiva: { borderColor: '#3d1a10', transform: [{ scale: 1.15 }] },
 });
