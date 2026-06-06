@@ -1,6 +1,18 @@
 import { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, ActivityIndicator, ScrollView } from 'react-native';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  KeyboardAvoidingView,
+  ActivityIndicator,
+  ScrollView,
+} from 'react-native';
+import {
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+} from 'firebase/auth';
 import { auth, db } from '../lib/firebase';
 import { StatusBar } from 'expo-status-bar';
 import { Eye, EyeOff } from 'lucide-react-native';
@@ -41,7 +53,10 @@ export default function Index() {
         setModalSucesso(true);
       }
     } catch (e: any) {
-      if (e.code === 'auth/invalid-credential' || e.code === 'auth/user-not-found') {
+      if (
+        e.code === 'auth/invalid-credential' ||
+        e.code === 'auth/user-not-found'
+      ) {
         setErro('e-mail ou senha incorretos');
       } else if (e.code === 'auth/email-already-in-use') {
         setErro('e-mail já cadastrado');
@@ -56,7 +71,10 @@ export default function Index() {
   }
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: 'rgba(210,225,255,0.85)' }} behavior="padding">
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: 'rgba(210,225,255,0.85)' }}
+      behavior="padding"
+    >
       <StatusBar style="dark" />
       <LinearGradient
         colors={[
@@ -115,11 +133,19 @@ export default function Index() {
                 placeholder="••••••"
                 underlineColorAndroid="transparent"
               />
-              <TouchableOpacity onPress={() => setMostrarSenha(!mostrarSenha)} style={styles.olho}>
-                {mostrarSenha
-                  ? <EyeOff size={18} color="rgba(122,48,64,0.4)" strokeWidth={2} />
-                  : <Eye size={18} color="rgba(122,48,64,0.4)" strokeWidth={2} />
-                }
+              <TouchableOpacity
+                onPress={() => setMostrarSenha(!mostrarSenha)}
+                style={styles.olho}
+              >
+                {mostrarSenha ? (
+                  <EyeOff
+                    size={18}
+                    color="rgba(122,48,64,0.4)"
+                    strokeWidth={2}
+                  />
+                ) : (
+                  <Eye size={18} color="rgba(122,48,64,0.4)" strokeWidth={2} />
+                )}
               </TouchableOpacity>
             </View>
 
@@ -139,11 +165,21 @@ export default function Index() {
               )}
             </TouchableOpacity>
 
-            <TouchableOpacity onPress={() => { setModo(modo === 'login' ? 'cadastro' : 'login'); setErro(''); }}>
+            <TouchableOpacity
+              onPress={() => {
+                setModo(modo === 'login' ? 'cadastro' : 'login');
+                setErro('');
+              }}
+            >
               <Text style={styles.trocar}>
-                {modo === 'login' ? 'não tem conta? cadastre-se' : 'já tem conta? entrar'}
+                {modo === 'login'
+                  ? 'não tem conta? cadastre-se'
+                  : 'já tem conta? entrar'}
               </Text>
             </TouchableOpacity>
+            <Text style={styles.versao}>
+              v{require('../app.json').expo.version}
+            </Text>
           </LinearGradient>
         </ScrollView>
       </LinearGradient>
@@ -262,5 +298,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: 'rgba(122,48,64,0.55)',
     textAlign: 'center',
+  },
+  versao: {
+    fontFamily: 'Baloo2_400Regular',
+    fontSize: 11,
+    color: 'rgba(122,48,64,0.3)',
+    textAlign: 'center',
+    marginTop: 16,
   },
 });
