@@ -567,6 +567,21 @@ export default function Perfil() {
 
             <TouchableOpacity
               style={styles.itemAcao}
+              onPress={() => router.push('/espacos-criar' as any)}
+            >
+              <ChevronRight size={14} color="#4a7a4a" strokeWidth={2} />
+              <Text style={[styles.itemAcaoTexto, { color: '#4a7a4a' }]}>
+                criar outro espaço
+              </Text>
+              <ChevronRight
+                size={14}
+                color="rgba(74,122,74,0.4)"
+                strokeWidth={2}
+              />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.itemAcao}
               onPress={() => {
                 setCodigoNovoEspaco('');
                 setErroNovoEspaco('');
