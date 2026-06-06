@@ -32,6 +32,7 @@ import {
   AlertTriangle,
   Pin,
   ShoppingCart,
+  RefreshCw,
 } from 'lucide-react-native';
 
 // ─── tipos ────────────────────────────────────────────────────────────────────
@@ -237,44 +238,49 @@ export default function Inicio() {
     return unsub;
   }, [user]);
 
-  useEffect(() => {
-    async function buscarClima() {
-      try {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== 'granted') {
-          setClimaErro(true);
-          return;
-        }
-        const loc = await Location.getCurrentPositionAsync({});
-        const { latitude, longitude } = loc.coords;
-        const [resClima, resGeo] = await Promise.all([
-          fetch(
-            `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true`
-          ),
-          fetch(
-            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`,
-            { headers: { 'User-Agent': 'leafhome2/1.0' } }
-          ),
-        ]);
-        const jsonClima = await resClima.json();
-        const jsonGeo = await resGeo.json();
-        const cidade =
-          jsonGeo.address?.city ??
-          jsonGeo.address?.town ??
-          jsonGeo.address?.village ??
-          '';
-        const estado = jsonGeo.address?.state ?? '';
-        setClima({
-          temp: Math.round(jsonClima.current_weather.temperature),
-          weathercode: jsonClima.current_weather.weathercode,
-          cidade,
-          estado,
-        });
-      } catch {
+  async function buscarClima() {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
         setClimaErro(true);
+        return;
       }
+      const loc = await Location.getCurrentPositionAsync({});
+      const { latitude, longitude } = loc.coords;
+      const [resClima, resGeo] = await Promise.all([
+        fetch(
+          `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true`
+        ),
+        fetch(
+          `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`,
+          {
+            headers: { 'User-Agent': 'leafhome2/1.0' },
+          }
+        ),
+      ]);
+      const jsonClima = await resClima.json();
+      const jsonGeo = await resGeo.json();
+      const cidade =
+        jsonGeo.address?.city ??
+        jsonGeo.address?.town ??
+        jsonGeo.address?.village ??
+        '';
+      const estado = jsonGeo.address?.state ?? '';
+      setClima({
+        temp: Math.round(jsonClima.current_weather.temperature),
+        weathercode: jsonClima.current_weather.weathercode,
+        cidade,
+        estado,
+      });
+    } catch {
+      setClimaErro(true);
     }
+  }
+
+  useEffect(() => {
     buscarClima();
+    const intervalo = setInterval(buscarClima, 30 * 60 * 1000);
+    return () => clearInterval(intervalo);
   }, []);
 
   // espaço + membros
@@ -511,28 +517,53 @@ export default function Inicio() {
               style={[styles.card, { marginBottom: 12, paddingVertical: 14 }]}
             >
               <View
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                }}
               >
                 <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 12,
+                  }}
+                >
+                  <View
+                    style={[
+                      styles.cardIconeWrap,
+                      {
+                        backgroundColor: 'rgba(106,159,216,0.15)',
+                        width: 36,
+                        height: 36,
+                      },
+                    ]}
+                  >
+                    {climaIcone(clima.weathercode)}
+                  </View>
+                  <View>
+                    <Text style={styles.resumoValor2}>{clima.temp}°C</Text>
+                    <Text style={styles.resumoSub}>
+                      {climaDescricao(clima.weathercode)}
+                      {clima.cidade ? ` · ${clima.cidade}` : ''}
+                      {clima.estado ? `, ${clima.estado}` : ''}
+                    </Text>
+                  </View>
+                </View>
+                <TouchableOpacity
+                  onPress={buscarClima}
                   style={[
                     styles.cardIconeWrap,
                     {
-                      backgroundColor: 'rgba(106,159,216,0.15)',
-                      width: 36,
-                      height: 36,
+                      backgroundColor: 'rgba(106,159,216,0.1)',
+                      width: 32,
+                      height: 32,
                     },
                   ]}
                 >
-                  {climaIcone(clima.weathercode)}
-                </View>
-                <View>
-                  <Text style={styles.resumoValor2}>{clima.temp}°C</Text>
-                  <Text style={styles.resumoSub}>
-                    {climaDescricao(clima.weathercode)}
-                    {clima.cidade ? ` · ${clima.cidade}` : ''}
-                    {clima.estado ? `, ${clima.estado}` : ''}
-                  </Text>
-                </View>
+                  <RefreshCw size={14} color="#6a9fd8" strokeWidth={2} />
+                </TouchableOpacity>
               </View>
             </LinearGradient>
           )}
