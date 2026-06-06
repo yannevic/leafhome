@@ -504,7 +504,7 @@ export default function Inicio() {
           </View>
 
           {/* ─── card clima ─── */}
-          {clima && (
+          {clima ? (
             <LinearGradient
               colors={[
                 'rgba(253,246,240,1)',
@@ -566,7 +566,70 @@ export default function Inicio() {
                 </TouchableOpacity>
               </View>
             </LinearGradient>
-          )}
+          ) : climaErro ? (
+            <LinearGradient
+              colors={[
+                'rgba(253,246,240,1)',
+                'rgba(230,235,255,0.8)',
+                'rgba(210,225,255,0.7)',
+                'rgba(253,246,240,1)',
+              ]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[styles.card, { marginBottom: 12, paddingVertical: 14 }]}
+            >
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                }}
+              >
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 12,
+                  }}
+                >
+                  <View
+                    style={[
+                      styles.cardIconeWrap,
+                      {
+                        backgroundColor: 'rgba(106,159,216,0.15)',
+                        width: 36,
+                        height: 36,
+                      },
+                    ]}
+                  >
+                    <AlertTriangle size={18} color="#d4a84b" strokeWidth={2} />
+                  </View>
+                  <View>
+                    <Text style={styles.resumoValor2}>--°C</Text>
+                    <Text style={styles.resumoSub}>
+                      permissão de localização negada
+                    </Text>
+                  </View>
+                </View>
+                <TouchableOpacity
+                  onPress={() => {
+                    setClimaErro(false);
+                    buscarClima();
+                  }}
+                  style={[
+                    styles.cardIconeWrap,
+                    {
+                      backgroundColor: 'rgba(106,159,216,0.1)',
+                      width: 32,
+                      height: 32,
+                    },
+                  ]}
+                >
+                  <RefreshCw size={14} color="#6a9fd8" strokeWidth={2} />
+                </TouchableOpacity>
+              </View>
+            </LinearGradient>
+          ) : null}
 
           {/* ─── card gastos do mês ─── */}
           <LinearGradient

@@ -9,7 +9,7 @@ import {
 } from '@expo-google-fonts/baloo-2';
 import * as SplashScreen from 'expo-splash-screen';
 import { onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 
 SplashScreen.preventAutoHideAsync();
@@ -30,7 +30,13 @@ export default function RootLayout() {
       SplashScreen.hideAsync();
       if (user) {
         const snap = await getDoc(doc(db, 'users', user.uid));
-        const espacoAtivo = snap.data()?.espacoAtivo;
+        const data = snap.data() ?? {};
+        if (data.espacoAtivo && (!data.espacos || data.espacos.length === 0)) {
+          await updateDoc(doc(db, 'users', user.uid), {
+            espacos: arrayUnion(data.espacoAtivo),
+          });
+        }
+        const espacoAtivo = data.espacoAtivo;
         if (espacoAtivo) {
           roteador.replace('/(tabs)');
         } else {

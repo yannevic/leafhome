@@ -1,21 +1,42 @@
 import { useState } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity,
-  StyleSheet, KeyboardAvoidingView, ScrollView, ActivityIndicator,
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  KeyboardAvoidingView,
+  ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import * as Clipboard from 'expo-clipboard';
 import { ClipboardPaste } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { collection, addDoc, query, where, getDocs, doc, setDoc } from 'firebase/firestore';
+import {
+  collection,
+  addDoc,
+  query,
+  where,
+  getDocs,
+  doc,
+  setDoc,
+  arrayUnion,
+} from 'firebase/firestore';
 import { db, auth } from '../lib/firebase';
 
 function gerarCodigo() {
   const letras = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
   const nums = '23456789';
-  const parte1 = Array.from({ length: 4 }, () => letras[Math.floor(Math.random() * letras.length)]).join('');
-  const parte2 = Array.from({ length: 4 }, () => nums[Math.floor(Math.random() * nums.length)]).join('');
+  const parte1 = Array.from(
+    { length: 4 },
+    () => letras[Math.floor(Math.random() * letras.length)]
+  ).join('');
+  const parte2 = Array.from(
+    { length: 4 },
+    () => nums[Math.floor(Math.random() * nums.length)]
+  ).join('');
   return `${parte1}-${parte2}`;
 }
 
@@ -27,7 +48,10 @@ export default function Espacos() {
   const [erro, setErro] = useState('');
 
   async function criarEspaco() {
-    if (!nome.trim()) { setErro('dê um nome pro seu espaço'); return; }
+    if (!nome.trim()) {
+      setErro('dê um nome pro seu espaço');
+      return;
+    }
     setErro('');
     setCarregando(true);
     try {
@@ -44,7 +68,11 @@ export default function Espacos() {
         userId: uid,
         entradoEm: new Date(),
       });
-      await setDoc(doc(db, 'users', uid), { espacoAtivo: espacoRef.id }, { merge: true });
+      await setDoc(
+        doc(db, 'users', uid),
+        { espacoAtivo: espacoRef.id, espacos: arrayUnion(espacoRef.id) },
+        { merge: true }
+      );
       router.replace('/(tabs)');
     } catch {
       setErro('algo deu errado, tente novamente');
@@ -54,21 +82,35 @@ export default function Espacos() {
   }
 
   async function entrarEspaco() {
-    if (!codigo.trim()) { setErro('digite o código do espaço'); return; }
+    if (!codigo.trim()) {
+      setErro('digite o código do espaço');
+      return;
+    }
     setErro('');
     setCarregando(true);
     try {
       const uid = auth.currentUser!.uid;
-      const q = query(collection(db, 'spaces'), where('codigo', '==', codigo.trim().toUpperCase()));
+      const q = query(
+        collection(db, 'spaces'),
+        where('codigo', '==', codigo.trim().toUpperCase())
+      );
       const snap = await getDocs(q);
-      if (snap.empty) { setErro('código não encontrado'); setCarregando(false); return; }
+      if (snap.empty) {
+        setErro('código não encontrado');
+        setCarregando(false);
+        return;
+      }
       const espacoId = snap.docs[0].id;
       await setDoc(doc(db, 'space_members', `${espacoId}_${uid}`), {
         spaceId: espacoId,
         userId: uid,
         entradoEm: new Date(),
       });
-      await setDoc(doc(db, 'users', uid), { espacoAtivo: espacoId }, { merge: true });
+      await setDoc(
+        doc(db, 'users', uid),
+        { espacoAtivo: espacoId, espacos: arrayUnion(espacoId) },
+        { merge: true }
+      );
       router.replace('/(tabs)');
     } catch {
       setErro('algo deu errado, tente novamente');
@@ -78,7 +120,10 @@ export default function Espacos() {
   }
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: 'rgba(210,225,255,0.85)' }} behavior="padding">
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: 'rgba(210,225,255,0.85)' }}
+      behavior="padding"
+    >
       <StatusBar style="dark" />
       <LinearGradient
         colors={[
@@ -97,20 +142,42 @@ export default function Espacos() {
           keyboardShouldPersistTaps="handled"
         >
           <Text style={styles.titulo}>seu espaço</Text>
-          <Text style={styles.subtitulo}>crie um espaço ou entre em um existente</Text>
+          <Text style={styles.subtitulo}>
+            crie um espaço ou entre em um existente
+          </Text>
 
           <View style={styles.abas}>
             <TouchableOpacity
               style={[styles.aba, aba === 'criar' && styles.abaAtiva]}
-              onPress={() => { setAba('criar'); setErro(''); }}
+              onPress={() => {
+                setAba('criar');
+                setErro('');
+              }}
             >
-              <Text style={[styles.abaTexto, aba === 'criar' && styles.abaTextoAtivo]}>criar</Text>
+              <Text
+                style={[
+                  styles.abaTexto,
+                  aba === 'criar' && styles.abaTextoAtivo,
+                ]}
+              >
+                criar
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.aba, aba === 'entrar' && styles.abaAtiva]}
-              onPress={() => { setAba('entrar'); setErro(''); }}
+              onPress={() => {
+                setAba('entrar');
+                setErro('');
+              }}
             >
-              <Text style={[styles.abaTexto, aba === 'entrar' && styles.abaTextoAtivo]}>entrar</Text>
+              <Text
+                style={[
+                  styles.abaTexto,
+                  aba === 'entrar' && styles.abaTextoAtivo,
+                ]}
+              >
+                entrar
+              </Text>
             </TouchableOpacity>
           </View>
 
@@ -139,11 +206,16 @@ export default function Espacos() {
                   underlineColorAndroid="transparent"
                 />
                 {erro ? <Text style={styles.erro}>{erro}</Text> : null}
-                <TouchableOpacity style={styles.botao} onPress={criarEspaco} disabled={carregando}>
-                  {carregando
-                    ? <ActivityIndicator color="#3d1a10" />
-                    : <Text style={styles.botaoTexto}>criar espaço</Text>
-                  }
+                <TouchableOpacity
+                  style={styles.botao}
+                  onPress={criarEspaco}
+                  disabled={carregando}
+                >
+                  {carregando ? (
+                    <ActivityIndicator color="#3d1a10" />
+                  ) : (
+                    <Text style={styles.botaoTexto}>criar espaço</Text>
+                  )}
                 </TouchableOpacity>
               </>
             ) : (
@@ -166,15 +238,24 @@ export default function Espacos() {
                       setCodigo(texto.toUpperCase());
                     }}
                   >
-                    <ClipboardPaste size={18} color="rgba(122,48,64,0.4)" strokeWidth={2} />
+                    <ClipboardPaste
+                      size={18}
+                      color="rgba(122,48,64,0.4)"
+                      strokeWidth={2}
+                    />
                   </TouchableOpacity>
                 </View>
                 {erro ? <Text style={styles.erro}>{erro}</Text> : null}
-                <TouchableOpacity style={styles.botao} onPress={entrarEspaco} disabled={carregando}>
-                  {carregando
-                    ? <ActivityIndicator color="#3d1a10" />
-                    : <Text style={styles.botaoTexto}>entrar no espaço</Text>
-                  }
+                <TouchableOpacity
+                  style={styles.botao}
+                  onPress={entrarEspaco}
+                  disabled={carregando}
+                >
+                  {carregando ? (
+                    <ActivityIndicator color="#3d1a10" />
+                  ) : (
+                    <Text style={styles.botaoTexto}>entrar no espaço</Text>
+                  )}
                 </TouchableOpacity>
               </>
             )}

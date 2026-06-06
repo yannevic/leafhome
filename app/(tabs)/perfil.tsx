@@ -26,6 +26,8 @@ import {
   EyeOff,
   ChevronRight,
   Crown,
+  RefreshCw,
+  ClipboardPaste,
 } from 'lucide-react-native';
 import * as Clipboard from 'expo-clipboard';
 import { router } from 'expo-router';
@@ -39,6 +41,8 @@ import {
   where,
   getDocs,
   deleteDoc,
+  arrayRemove,
+  arrayUnion,
 } from 'firebase/firestore';
 import { signOut, deleteUser } from 'firebase/auth';
 import { auth, db } from '../../lib/firebase';
@@ -81,6 +85,14 @@ export default function Perfil() {
   const [espacoCriador, setEspacoCriador] = useState('');
   const [membros, setMembros] = useState<Membro[]>([]);
   const [carregando, setCarregando] = useState(true);
+  const [todosEspacos, setTodosEspacos] = useState<
+    { id: string; nome: string; codigo: string }[]
+  >([]);
+  const [modalTrocarEspaco, setModalTrocarEspaco] = useState(false);
+  const [modalEntrarEspaco, setModalEntrarEspaco] = useState(false);
+  const [codigoNovoEspaco, setCodigoNovoEspaco] = useState('');
+  const [erroNovoEspaco, setErroNovoEspaco] = useState('');
+  const [entrandoEspaco, setEntrandoEspaco] = useState(false);
 
   const [modalEditar, setModalEditar] = useState(false);
   const [modalAvatares, setModalAvatares] = useState(false);
@@ -117,6 +129,19 @@ export default function Perfil() {
 
     const eId = userData.espacoAtivo ?? '';
     setEspacoId(eId);
+    const espacosIds: string[] = userData.espacos ?? (eId ? [eId] : []);
+    if (espacosIds.length > 1) {
+      const docs = await Promise.all(
+        espacosIds.map((id: string) => getDoc(doc(db, 'spaces', id)))
+      );
+      setTodosEspacos(
+        docs
+          .filter((d) => d.exists())
+          .map((d) => ({ id: d.id, ...(d.data() as any) }))
+      );
+    } else {
+      setTodosEspacos([]);
+    }
     if (eId) {
       const espacoSnap = await getDoc(doc(db, 'spaces', eId));
       const espacoData = espacoSnap.data() ?? {};
@@ -204,11 +229,10 @@ export default function Perfil() {
           style: 'destructive',
           onPress: async () => {
             await deleteDoc(doc(db, 'space_members', `${espacoId}_${mUid}`));
-            await setDoc(
-              doc(db, 'users', mUid),
-              { espacoAtivo: '' },
-              { merge: true }
-            );
+            await updateDoc(doc(db, 'users', mUid), {
+              espacos: arrayRemove(espacoId),
+              espacoAtivo: '',
+            });
             setMembros((prev) => prev.filter((m) => m.userId !== mUid));
           },
         },
@@ -217,19 +241,16 @@ export default function Perfil() {
   }
 
   async function sairDoEspacoConfirmado() {
-    await deleteDoc(doc(db, 'space_members', `${espacoId}_${uid}`));
-    await setDoc(doc(db, 'users', uid), { espacoAtivo: '' }, { merge: true });
-    router.replace('/espacos');
+    await sairDoEspacoEspecifico(espacoId);
   }
 
   async function excluirEspacoConfirmado() {
     for (const m of membros) {
       await deleteDoc(doc(db, 'space_members', `${espacoId}_${m.userId}`));
-      await setDoc(
-        doc(db, 'users', m.userId),
-        { espacoAtivo: '' },
-        { merge: true }
-      );
+      await updateDoc(doc(db, 'users', m.userId), {
+        espacos: arrayRemove(espacoId),
+        espacoAtivo: '',
+      });
     }
     await deleteDoc(doc(db, 'spaces', espacoId));
     router.replace('/espacos');
@@ -269,6 +290,70 @@ export default function Perfil() {
   async function excluirContaConfirmada() {
     await deleteDoc(doc(db, 'users', uid));
     await deleteUser(auth.currentUser!);
+  }
+
+  async function trocarEspacoAtivo(novoId: string) {
+    if (novoId === espacoId) {
+      setModalTrocarEspaco(false);
+      return;
+    }
+    await updateDoc(doc(db, 'users', uid), { espacoAtivo: novoId });
+    setModalTrocarEspaco(false);
+    router.replace('/(tabs)');
+  }
+
+  async function entrarEmNovoEspaco() {
+    if (!codigoNovoEspaco.trim()) {
+      setErroNovoEspaco('digite o código');
+      return;
+    }
+    setErroNovoEspaco('');
+    setEntrandoEspaco(true);
+    try {
+      const q = query(
+        collection(db, 'spaces'),
+        where('codigo', '==', codigoNovoEspaco.trim().toUpperCase())
+      );
+      const snap = await getDocs(q);
+      if (snap.empty) {
+        setErroNovoEspaco('código não encontrado');
+        setEntrandoEspaco(false);
+        return;
+      }
+      const novoEspacoId = snap.docs[0].id;
+      await setDoc(doc(db, 'space_members', `${novoEspacoId}_${uid}`), {
+        spaceId: novoEspacoId,
+        userId: uid,
+        entradoEm: new Date(),
+      });
+      await updateDoc(doc(db, 'users', uid), {
+        espacoAtivo: novoEspacoId,
+        espacos: arrayUnion(novoEspacoId),
+      });
+      setModalEntrarEspaco(false);
+      setCodigoNovoEspaco('');
+      router.replace('/(tabs)');
+    } catch {
+      setErroNovoEspaco('algo deu errado, tente novamente');
+    } finally {
+      setEntrandoEspaco(false);
+    }
+  }
+
+  async function sairDoEspacoEspecifico(sairId: string) {
+    const userSnap = await getDoc(doc(db, 'users', uid));
+    const espacosAtuais: string[] = userSnap.data()?.espacos ?? [];
+    const restantes = espacosAtuais.filter((id) => id !== sairId);
+    await deleteDoc(doc(db, 'space_members', `${sairId}_${uid}`));
+    await updateDoc(doc(db, 'users', uid), {
+      espacos: arrayRemove(sairId),
+      espacoAtivo: restantes.length > 0 ? restantes[0] : '',
+    });
+    if (restantes.length > 0) {
+      router.replace('/(tabs)');
+    } else {
+      router.replace('/espacos');
+    }
   }
 
   if (carregando) {
@@ -376,7 +461,25 @@ export default function Perfil() {
 
             <View style={styles.separador} />
 
-            <Text style={styles.labelSecao}>membros</Text>
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: 10,
+              }}
+            >
+              <Text style={[styles.labelSecao, { marginBottom: 0 }]}>
+                membros
+              </Text>
+              <TouchableOpacity onPress={carregarDados}>
+                <RefreshCw
+                  size={13}
+                  color="rgba(122,48,64,0.55)"
+                  strokeWidth={2}
+                />
+              </TouchableOpacity>
+            </View>
             {membros.map((m) => (
               <View key={m.userId} style={styles.membroRow}>
                 <Image
@@ -403,6 +506,29 @@ export default function Perfil() {
                 )}
               </View>
             ))}
+
+            {todosEspacos.length > 1 && (
+              <>
+                <View style={styles.separador} />
+                <Text style={styles.labelSecao}>outros espaços</Text>
+                {todosEspacos
+                  .filter((e) => e.id !== espacoId)
+                  .map((e) => (
+                    <TouchableOpacity
+                      key={e.id}
+                      style={styles.itemAcao}
+                      onPress={() => trocarEspacoAtivo(e.id)}
+                    >
+                      <Text style={styles.itemAcaoTexto}>{e.nome}</Text>
+                      <ChevronRight
+                        size={14}
+                        color="rgba(122,48,64,0.4)"
+                        strokeWidth={2}
+                      />
+                    </TouchableOpacity>
+                  ))}
+              </>
+            )}
 
             <View style={styles.separador} />
 
@@ -435,6 +561,25 @@ export default function Perfil() {
               <ChevronRight
                 size={14}
                 color="rgba(232,96,122,0.4)"
+                strokeWidth={2}
+              />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.itemAcao}
+              onPress={() => {
+                setCodigoNovoEspaco('');
+                setErroNovoEspaco('');
+                setModalEntrarEspaco(true);
+              }}
+            >
+              <ChevronRight size={14} color="#4a7a4a" strokeWidth={2} />
+              <Text style={[styles.itemAcaoTexto, { color: '#4a7a4a' }]}>
+                entrar em outro espaço
+              </Text>
+              <ChevronRight
+                size={14}
+                color="rgba(74,122,74,0.4)"
                 strokeWidth={2}
               />
             </TouchableOpacity>
@@ -700,6 +845,73 @@ export default function Perfil() {
               <TouchableOpacity
                 style={styles.botaoCancelar}
                 onPress={() => setModalRenomear(false)}
+              >
+                <Text style={styles.botaoCancelarTexto}>cancelar</Text>
+              </TouchableOpacity>
+            </LinearGradient>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      <Modal visible={modalEntrarEspaco} transparent animationType="slide">
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
+          <View style={styles.modalOverlay}>
+            <LinearGradient
+              colors={[
+                'rgba(253,246,240,1)',
+                'rgba(252,220,228,0.9)',
+                'rgba(230,235,255,0.8)',
+                'rgba(255,248,220,0.7)',
+                'rgba(232,220,255,0.8)',
+                'rgba(253,246,240,1)',
+              ]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.modalCard}
+            >
+              <Text style={styles.modalTitulo}>entrar em outro espaço</Text>
+              <Text style={styles.label}>código do espaço</Text>
+              <View style={styles.inputWrapper}>
+                <TextInput
+                  style={styles.inputInner}
+                  value={codigoNovoEspaco}
+                  onChangeText={setCodigoNovoEspaco}
+                  placeholder="ex: ABCD-1234"
+                  placeholderTextColor="rgba(122,48,64,0.35)"
+                  autoCapitalize="characters"
+                  underlineColorAndroid="transparent"
+                />
+                <TouchableOpacity
+                  style={styles.olho}
+                  onPress={async () => {
+                    const texto = await Clipboard.getStringAsync();
+                    setCodigoNovoEspaco(texto.toUpperCase());
+                  }}
+                >
+                  <ClipboardPaste
+                    size={18}
+                    color="rgba(122,48,64,0.4)"
+                    strokeWidth={2}
+                  />
+                </TouchableOpacity>
+              </View>
+              {erroNovoEspaco ? (
+                <Text style={styles.erro}>{erroNovoEspaco}</Text>
+              ) : null}
+              <TouchableOpacity
+                style={styles.botao}
+                onPress={entrarEmNovoEspaco}
+                disabled={entrandoEspaco}
+              >
+                {entrandoEspaco ? (
+                  <ActivityIndicator color="#3d1a10" />
+                ) : (
+                  <Text style={styles.botaoTexto}>entrar</Text>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.botaoCancelar}
+                onPress={() => setModalEntrarEspaco(false)}
               >
                 <Text style={styles.botaoCancelarTexto}>cancelar</Text>
               </TouchableOpacity>
@@ -1029,5 +1241,32 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 999,
+  },
+  inputWrapper: {
+    backgroundColor: 'rgba(253,242,246,0.7)',
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: 'rgba(232,160,176,0.3)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  inputInner: {
+    flex: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontFamily: 'Baloo2_400Regular',
+    fontSize: 14,
+    color: '#3d1a10',
+  },
+  olho: {
+    paddingHorizontal: 12,
+  },
+  erro: {
+    fontFamily: 'Baloo2_400Regular',
+    fontSize: 12,
+    color: '#e8607a',
+    textAlign: 'center',
+    marginBottom: 12,
   },
 });
